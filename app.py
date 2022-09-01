@@ -2,7 +2,7 @@ import jinja2
 from aiohttp import web
 from chat.urls import routes as chat_routes
 from accounts.urls import routes as acc_routes
-from settings import BASE_DIR
+from settings import *
 from helpers.middleware import middlewares
 import aiohttp_jinja2
 
@@ -24,4 +24,4 @@ if __name__ == '__main__':
 
     app.router.add_static('/static/', BASE_DIR / 'static', name='static')
 
-    web.run_app(app)
+    web.run_app(app, host=HOST, port=PORT)

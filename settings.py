@@ -1,6 +1,4 @@
-import sys
 import pathlib
-import logging
 
 BASE_DIR = pathlib.Path(__file__).parent
 TEMPLATE_DIR = BASE_DIR / 'templates'
