@@ -6,9 +6,7 @@
     <h1>Как использовать чат?</h1>
 
     <ul class="lead">
-        <li><a href="{{ app.router['login'].url_for() }}">Войдите</a>
-            или создайте
-            <a href="{{ app.router['register'].url_for() }}">нового пользователя</a>
+        <li>Cоздайте <a href="{{ app.router['register'].url_for() }}">нового пользователя</a>
         </li>
         <li>Вы можете подсоединиться к комнате по её имени, либо создать <a href="{{ app.router['create_room'].url_for() }}">новую</a></li>
         <li>В комнате могуть быть только два человека</li>

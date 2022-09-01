@@ -20,6 +20,7 @@ if __name__ == '__main__':
     app.router.add_routes(acc_routes)
 
     app.chats = {}
+    app.users = {}
 
     app.router.add_static('/static/', BASE_DIR / 'static', name='static')
 

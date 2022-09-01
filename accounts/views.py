@@ -8,31 +8,33 @@ from helpers.tools import redirect
 from helpers.decorators import anonymous_required, login_required
 
 
-class LogIn(web.View):
+class LogOut(web.View):
+    @login_required
+    async def get(self):
+        self.request.app.users.pop(
+            self.request.session.pop('user', None), None
+        )
+        redirect(self.request, 'index')
 
-    """ Simple Login user by username """
 
-    template_name = 'accounts/login.html'
+class Register(web.View):
 
     @anonymous_required
-    @aiohttp_jinja2.template(template_name)
+    @aiohttp_jinja2.template('accounts/register.html')
     async def get(self):
-        return {}
+        pass
 
     @anonymous_required
     async def post(self):
-        """ Check username and login """
+        """ Check is username unique and create new User """
         username = await self.is_valid()
-        if not username:
-            redirect(self.request, 'login')
-        self.login_user(username)
-        redirect(self.request, 'login')
+        if not username or self.request.app.users.get(username, None):
+            redirect(self.request, 'register')
 
-    def login_user(self, user):
-        """ Put user to session and redirect to Index """
-        self.request.session['user'] = str(user)
-        self.request.session['time'] = time()
-        redirect(self.request, 'index')
+        self.request.app.users[username] = {
+            'active': True
+        }
+        self.login_user(username)
 
     async def is_valid(self):
         """ Get username from post data, and check is correct """
@@ -42,35 +44,8 @@ class LogIn(web.View):
             return False
         return username
 
-
-class LogOut(web.View):
-
-    """ Remove current user from session """
-
-    @login_required
-    async def get(self):
-        self.request.session.pop('user')
+    def login_user(self, user):
+        """ Put user to session and redirect to Index """
+        self.request.session['user'] = str(user)
+        self.request.session['time'] = time()
         redirect(self.request, 'index')
-
-
-class Register(LogIn):
-
-    """ Create new user in db """
-
-    template_name = 'accounts/register.html'
-
-    @anonymous_required
-    @aiohttp_jinja2.template(template_name)
-    async def get(self):
-        return {}
-
-    @anonymous_required
-    async def post(self):
-        """ Check is username unique and create new User """
-        username = await self.is_valid()
-        if not username:
-            redirect(self.request, 'register')
-        self.request.app.users[username] = {
-            'active': True
-        }
-        self.login_user(username)

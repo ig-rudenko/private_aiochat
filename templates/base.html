@@ -46,9 +46,9 @@
                     {% endfor %}
                 </ul>
             {% else %}
-                <li{% if request.match_info._route.name == 'login' %} class="collapsed active"{% endif %}>
-                    <a href="{{ app.router['login'].url_for() }}">
-                        <i class="fa fa-sign-in fa-lg"></i> LogIn
+                <li{% if request.match_info._route.name == 'register' %} class="collapsed active"{% endif %}>
+                    <a href="{{ app.router['register'].url_for() }}">
+                        <i class="fa fa-sign-in fa-lg"></i> Войти
                     </a>
                 </li>
             {% endif %}
