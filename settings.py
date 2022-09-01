@@ -1,8 +1,6 @@
 import pathlib
 
 BASE_DIR = pathlib.Path(__file__).parent
-TEMPLATE_DIR = BASE_DIR / 'templates'
-STATIC_DIR = BASE_DIR / 'static'
 
-HOST = '0.0.0.0'
+HOST = '127.0.0.1'
 PORT = '8080'

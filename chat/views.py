@@ -8,27 +8,28 @@ from helpers.tools import redirect
 
 class CreateRoom(web.View):
 
-    """ Create new chat room """
-
     @login_required
     @aiohttp_jinja2.template('chat/rooms.html')
-    async def get(self):
-        return {'chat_rooms': []}
+    def get(self):
+        """Создание комнат"""
+        pass
 
     @login_required
     async def post(self):
-        """ Check is roomname unique and create new User """
-        self.roomname = await self.is_valid()
-        if not self.roomname:
+        """Создание комнаты"""
+
+        self.roomname = await self.is_valid()  # Проверяем ввод пользователя и возвращаем результат
+        if not self.roomname:  # Если имя комнаты было неверным
             redirect(self.request, 'create_room')
 
-        chat = self.request.app.chats
+        chat = self.request.app.chats  # Укорачиваем
 
-        if chat.get(self.roomname) and len(chat[self.roomname]) > 1:
+        # Если в комнате уже есть 2 пользователя, то нельзя к ней подключиться, перенаправляем на создание другой
+        if chat.get(self.roomname) and len(chat[self.roomname]) >= 2:
             redirect(self.request, 'create_room')
 
         # Первое подключение
-        elif not chat.get(self.roomname):
+        elif not chat.get(self.roomname):  # Комнаты еще нет
             chat[self.roomname] = {
                 self.request.user: {
                     'active': True
@@ -37,70 +38,97 @@ class CreateRoom(web.View):
 
         # Второе подключение
         else:
+
+            # Когда пользователь подключается к комнате, где уже есть кто-то, то формируем сообщение,
+            # которое будет отправлено в чат, что данный пользователь подключился
             message = {
                 'text': '< Подключился >',
                 'created_at': datetime.datetime.now().isoformat(),
                 'user': self.request.user
             }
-            await self.broadcast(message)
 
+            await self.broadcast(message)  # Отправляем в комнату сообщение
+
+            # Подключаем пользователя в комнату
             chat[self.roomname][self.request.user] = {
                 'active': True
             }
 
-        redirect(self.request, 'room', slug=self.roomname)
+        redirect(self.request, 'room', slug=self.roomname)  # Переходим в комнату
 
     async def is_valid(self):
-        """ Get roomname from post data, and check is correct """
-        data = await self.request.post()
+        data = await self.request.post()  # Вытягиваем пользовательские данные
         roomname = data.get('roomname', '').lower()
         return roomname
 
     async def broadcast(self, message):
-        """ Send messages to all in this room """
-        chats = self.request.app.chats[self.roomname].values()
-        print(chats)
-        for peer in chats:
-            await peer['ws'].send_json(message)
+        """Отправка сообщения в комнату"""
+        clients_data = self.request.app.chats[self.roomname].values()
+        print(clients_data)
+        for client in clients_data:
+            await client['ws'].send_json(message)  # Отправляем на веб сокет пользователя в данной комнате сообщение
 
 
 class ChatRoom(web.View):
-
-    """ Get room by slug display messages in this Room """
+    """Показываем комнату"""
 
     @login_required
     @aiohttp_jinja2.template('chat/chat.html')
-    async def get(self):
+    def get(self):
+
+        # URL - /chat/room/room_name
+        # self.request.match_info['slug'] == 'room_name'
+
         room = self.request.match_info['slug'].lower()
         return {
-            'room': {'name': room},
-            'room_messages': []
+            'room': room
         }
 
 
 class WebSocket(web.View):
-
-    """ Process WS connections """
+    """Обработка веб сокета"""
 
     async def get(self):
+
+        # URL - /chat/ws/room_name
+        # self.request.match_info['slug'] == 'room_name'
+
         self.room = self.request.match_info['slug'].lower()
         username: str = self.request.user
         app = self.request.app
         app.chats: dict
 
-        ws = web.WebSocketResponse()
+        ws = web.WebSocketResponse()  # Обработка веб-сокетов
         await ws.prepare(self.request)
 
+        # Если комната не существует или в комнате нет пользователя, то перенаправляем
         if not app.chats.get(self.room) or not app.chats[self.room].get(username):
             redirect(self.request, 'create_room')
 
+        # В глобальную переменную chats для текущего пользователя добавляем его веб сокет
         app.chats[self.room][username]['ws'] = ws
 
+        # Цикл приема новых сообщений
         async for msg in ws:
+
+            # Если тип сообщения это текст
             if msg.type == web.WSMsgType.text:
+
+                # Если пользователь отправил "/close", то прерываем подключение всех пользователей в комнате
                 if msg.data == '/close':
-                    await ws.close()
+                    chats = self.request.app.chats[self.room].values()  # Данные комнаты
+
+                    # Список веб сокетов пользователей в комнате
+                    web_sockets = [client_data['ws'] for client_data in chats]
+
+                    for w in web_sockets:  # по очереди каждый веб сокет
+                        await w.close()  # Отключаем
+                    break  # Прерываем цикл приема новых сообщений
+
+                # В другом случае обрабатываем сообщение
                 else:
+
+                    # msg.data - текст сообщения
                     text = msg.data.strip()
 
                     message = {
@@ -108,34 +136,36 @@ class WebSocket(web.View):
                         'created_at': datetime.datetime.now().isoformat(),
                         'user': self.request.user
                     }
-                    await self.broadcast(message)
+
+                    await self.broadcast(message)  # Отправляем сообщение в комнату
 
             elif msg.type == web.WSMsgType.error:
-                app.logger.debug(f'Connection closed with exception {ws.exception()}')
+                print('Error')
 
-        await self.disconnect(username, ws)
+        await self.disconnect(username, ws)  # Отключаем пользователя от комнаты
+
         return ws
 
     async def broadcast(self, message):
-        """ Send messages to all in this room """
-        chats = self.request.app.chats[self.room].values()
+        """Отправляем сообщение в комнату"""
+        chats = self.request.app.chats[self.room].values()  # Список пользовательских данных
         print(chats)
         for peer in chats:
-            await peer['ws'].send_json(message)
+            await peer['ws'].send_json(message)  # Отправляем на веб сокет пользователя в данной комнате сообщение
 
     async def disconnect(self, username, socket):
-        """ Close connection and notify broadcast """
+        """Отключаем пользователя от комнаты"""
         self.request.app.chats[self.room].pop(username, None)
-        if not socket.closed:
+        if not socket.closed:  # Если соединение еще не разорвано
             await socket.close()
-        if not self.request.app.chats[self.room]:
-            self.request.app.chats.pop(self.room)
+
+        if not self.request.app.chats[self.room]:  # Если в комнате больше нет пользователей
+            self.request.app.chats.pop(self.room)  # То удаляем комнату
 
 
 class Index(web.View):
-    """ Main page view """
+    """Домашняя страница"""
 
     @aiohttp_jinja2.template('index.html')
-    async def get(self):
-        print(self.request.app.chats)
+    def get(self):
         pass

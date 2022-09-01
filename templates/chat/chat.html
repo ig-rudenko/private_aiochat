@@ -5,7 +5,7 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-md-12 current-chat">
-            <h4>Комната: #{{ room.name }}</h4>
+            <h4>Комната: #{{ room }}</h4>
             <hr>
 
             <div class="row current-chat-area">
@@ -32,6 +32,6 @@
 {% endblock %}
 
 {% block extra_scripts %}
-    <script type="text/javascript">var WS_URL = "{{ app.router['ws'].url_for(slug=room.name) }}";</script>
+    <script type="text/javascript">var WS_URL = "{{ app.router['ws'].url_for(slug=room) }}";</script>
     <script src="/static/chat.js"></script>
 {% endblock %}
