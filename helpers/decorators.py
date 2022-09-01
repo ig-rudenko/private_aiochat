@@ -1,13 +1,4 @@
-from aiohttp import web
-from helpers.tools import redirect, add_message
-
-
-def json_response(func):
-    """ Wrapper for view method, to return JsonResponse """
-    async def wrapped(*args, **kwargs):
-        content, status = await func(*args, **kwargs)
-        return web.json_response(data=content, status=status)
-    return wrapped
+from helpers.tools import redirect
 
 
 def login_required(func):

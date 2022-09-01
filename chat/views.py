@@ -1,12 +1,9 @@
 import datetime
-import re
 import aiohttp_jinja2
-
-from textwrap import dedent
 from aiohttp import web
 
 from helpers.decorators import login_required
-from helpers.tools import redirect, add_message, get_object_or_404
+from helpers.tools import redirect
 
 
 class CreateRoom(web.View):
@@ -21,33 +18,50 @@ class CreateRoom(web.View):
     @login_required
     async def post(self):
         """ Check is roomname unique and create new User """
-        roomname = await self.is_valid()
-        if not roomname:
+        self.roomname = await self.is_valid()
+        if not self.roomname:
             redirect(self.request, 'create_room')
 
         chat = self.request.app.chats
 
-        if chat.get(roomname) and len(chat[roomname]) > 1:
+        if chat.get(self.roomname) and len(chat[self.roomname]) > 1:
             redirect(self.request, 'create_room')
 
-        elif not chat.get(roomname):
-            chat[roomname] = {
+        # Первое подключение
+        elif not chat.get(self.roomname):
+            chat[self.roomname] = {
                 self.request.user: {
                     'active': True
                 }
             }
+
+        # Второе подключение
         else:
-            chat[roomname][self.request.user] = {
+            message = {
+                'text': '< Подключился >',
+                'created_at': datetime.datetime.now().isoformat(),
+                'user': self.request.user
+            }
+            await self.broadcast(message)
+
+            chat[self.roomname][self.request.user] = {
                 'active': True
             }
 
-        redirect(self.request, 'room', slug=roomname)
+        redirect(self.request, 'room', slug=self.roomname)
 
     async def is_valid(self):
         """ Get roomname from post data, and check is correct """
         data = await self.request.post()
         roomname = data.get('roomname', '').lower()
         return roomname
+
+    async def broadcast(self, message):
+        """ Send messages to all in this room """
+        chats = self.request.app.chats[self.roomname].values()
+        print(chats)
+        for peer in chats:
+            await peer['ws'].send_json(message)
 
 
 class ChatRoom(web.View):
@@ -60,7 +74,6 @@ class ChatRoom(web.View):
         room = self.request.match_info['slug'].lower()
         return {
             'room': {'name': room},
-            'chat_rooms': [{'name': room}],
             'room_messages': []
         }
 
@@ -71,17 +84,21 @@ class WebSocket(web.View):
 
     async def get(self):
         self.room = self.request.match_info['slug'].lower()
-        user = self.request.user
+        username: str = self.request.user
         app = self.request.app
+        app.chats: dict
 
         ws = web.WebSocketResponse()
         await ws.prepare(self.request)
 
-        app.chats[self.room][self.request.user]['ws'] = ws
+        if not app.chats.get(self.room) or not app.chats[self.room].get(username):
+            redirect(self.request, 'create_room')
+
+        app.chats[self.room][username]['ws'] = ws
 
         async for msg in ws:
             if msg.type == web.WSMsgType.text:
-                if msg.data == 'close':
+                if msg.data == '/close':
                     await ws.close()
                 else:
                     text = msg.data.strip()
@@ -96,7 +113,7 @@ class WebSocket(web.View):
             elif msg.type == web.WSMsgType.error:
                 app.logger.debug(f'Connection closed with exception {ws.exception()}')
 
-        await self.disconnect(user, ws)
+        await self.disconnect(username, ws)
         return ws
 
     async def broadcast(self, message):
@@ -111,4 +128,14 @@ class WebSocket(web.View):
         self.request.app.chats[self.room].pop(username, None)
         if not socket.closed:
             await socket.close()
+        if not self.request.app.chats[self.room]:
+            self.request.app.chats.pop(self.room)
 
+
+class Index(web.View):
+    """ Main page view """
+
+    @aiohttp_jinja2.template('index.html')
+    async def get(self):
+        print(self.request.app.chats)
+        pass

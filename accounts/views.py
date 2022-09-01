@@ -49,8 +49,7 @@ class LogOut(web.View):
 
     @login_required
     async def get(self):
-        username = self.request.session.pop('user')
-        # self.request.app.users.pop(username)
+        self.request.session.pop('user')
         redirect(self.request, 'index')
 
 
@@ -71,7 +70,7 @@ class Register(LogIn):
         username = await self.is_valid()
         if not username:
             redirect(self.request, 'register')
-        self.request.users[username] = {
+        self.request.app.users[username] = {
             'active': True
         }
         self.login_user(username)
