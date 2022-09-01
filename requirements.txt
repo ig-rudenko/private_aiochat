@@ -1,16 +1,6 @@
-gunicorn
-pep8
-coverage
-coverage-badge
-pylama
 aiohttp
-aiohttp-debugtoolbar
 aiohttp-jinja2
 aiohttp-session
 aioredis
 async-timeout
 Jinja2
-peewee-async
-aiopg
-nose
-rednose
