@@ -5,7 +5,7 @@ def login_required(func):
     """ Allow only auth users """
     async def wrapped(self, *args, **kwargs):
         if self.request.user is None:
-            redirect(self.request, 'login')
+            redirect(self.request, 'register')
         return await func(self, *args, **kwargs)
     return wrapped
 
