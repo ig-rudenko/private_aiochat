@@ -31,15 +31,15 @@
             {% if request.user %}
                 <li{% if request.match_info._route.name == 'logout' %} class="collapsed active"{% endif %}>
                     <a href="{{ app.router['logout'].url_for() }}">
-                        <i class="fa fa-sign-out fa-lg"></i> LogOut from {{ request.user }}
+                        <i class="fa fa-sign-out fa-lg"></i> Logout from {{ request.user }}
                     </a>
                 </li>
                 <li data-toggle="collapse" data-target="#rooms" class="collapsed{% if request.path.startswith('/chat') %} active{% endif %}">
-                    <a><i class="fa fa-weixin fa-lg"></i> Chat rooms <span class="arrow"></span></a>
+                    <a><i class="fa fa-weixin fa-lg"></i> Start chat <span class="arrow"></span></a>
                 </li>
                 <ul class="sub-menu collapse{% if request.path.startswith('/chat') %} in{% endif %}" id="rooms">
                     <li{% if request.match_info._route.name == 'create_room' %} class="active"{% endif %}>
-                        <a href="{{ app.router['create_room'].url_for() }}">Create new room</a></li>
+                        <a href="{{ app.router['create_room'].url_for() }}">Room</a></li>
                     {% for room in chat_rooms %}
                         <li{% if request.match_info._route.name == 'room' and request.match_info['slug'] == room.name %} class="active"{% endif %}>
                             <a href="{{ app.router['room'].url_for(slug=room.name) }}">#{{ room.name }}</a></li>
