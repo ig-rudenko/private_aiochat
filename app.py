@@ -7,7 +7,7 @@ from helpers.middleware import middlewares
 import aiohttp_jinja2
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     # Устанавливаем промежуточное программное обеспечение
     app = web.Application(middlewares=middlewares)
@@ -15,7 +15,7 @@ if __name__ == '__main__':
     # Настраиваем папку с шаблонами
     jinja_env = aiohttp_jinja2.setup(
         app,
-        loader=jinja2.FileSystemLoader(BASE_DIR / 'templates'),
+        loader=jinja2.FileSystemLoader(BASE_DIR / "templates"),
         context_processors=[aiohttp_jinja2.request_processor],
     )
 
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     # }
 
     # Настраиваем статику
-    app.router.add_static('/static/', BASE_DIR / 'static', name='static')
+    app.router.add_static("/static/", BASE_DIR / "static", name="static")
 
     # Запускаем приложение
     web.run_app(app, host=HOST, port=PORT)
