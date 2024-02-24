@@ -9,21 +9,22 @@ from helpers.tools import redirect
 class Register(web.View):
     @anonymous_required
     @aiohttp_jinja2.template("accounts/register.html")
-    def get(self):
+    async def get(self):
         """Просто отдаем шаблон, для ввода имени для регистрации"""
-        pass
+        return {}
 
     @anonymous_required
+    @aiohttp_jinja2.template("accounts/register.html")
     async def post(self):
         """Создаем пользователя"""
-
+        data = await self.request.post()
+        username = data.get("username")
         # Проверяем имя пользователя и возвращаем результат
-        username = await self.is_valid()
 
         # Если имя не прошло проверку, либо пользователь с таким именем уже имеется в app.users, то
-        if not username or self.request.app.users.get(username, None):
+        if not await self.username_is_valid(username) or self.request.app.users.get(username, None):
             # Перенаправляем на страницу регистрации снова
-            redirect(self.request, "register")
+            return {"error": "Неверный пользователь"}
 
         # Если имя пользователя верное и его еще нет на сайте, то создаем запись о нем в глобальной переменной
         self.request.app.users[username] = {"active": True}
@@ -31,18 +32,10 @@ class Register(web.View):
         # Создаем сессию для этого пользователя
         self.login(username)
 
-    async def is_valid(self):
+    @staticmethod
+    async def username_is_valid(username: str) -> bool:
         """Проверяем введенное имя пользователя"""
-
-        # смотрим данные, которые были введены на странице регистрации
-        data = await self.request.post()
-
-        # Вытягиваем из словаря имя пользователя
-        username = data.get("username", "").lower()
-
-        if len(username) < 4:  # Имя должно быть не менее 4 символов
-            return False
-        return username
+        return username and len(username) >= 4  # Имя должно быть не менее 4 символов
 
     def login(self, username):
         """Создаем на основе имени пользователя запись сессии в Redis"""
@@ -55,7 +48,6 @@ class Register(web.View):
 class LogOut(web.View):
     @login_required
     async def get(self):
-
         # Вытягиваем запись имени пользователя из сессии (из Redis) и удаляем её
         # И также по этому имени удаляем запись о пользователе в глобальной переменной app.users
         self.request.app.users.pop(self.request.session.pop("user", None), None)

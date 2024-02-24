@@ -1,6 +1,6 @@
 aiohttp
 aiohttp-jinja2
 aiohttp-session
-aioredis
+redis
 async-timeout
 Jinja2

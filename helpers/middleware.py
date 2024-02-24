@@ -1,20 +1,16 @@
 from aiohttp_session import get_session
-import aioredis
 from aiohttp_session import session_middleware
+from redis.asyncio import Redis
 from aiohttp_session.redis_storage import RedisStorage
+
+from settings import REDIS_PORT, REDIS_HOST
 
 
 # Декоратор для добавления "user" атрибута в параметр "request"
-
-
 async def request_user_middleware(app, handler):
     async def middleware(request):
-        request.session = await get_session(request)
-        # Получаем сессию для текущего запроса
-        request.user = None
-        username = request.session.get("user")  # Из сессии вытягиваем имя пользователя
-        if username is not None:
-            request.user = username  # Устанавливаем атрибут пользователя
+        request.session = await get_session(request) # Получаем сессию для текущего запроса
+        request.user = request.session.get("user")  # Из сессии вытягиваем имя пользователя
 
         return await handler(request)
 
@@ -23,7 +19,7 @@ async def request_user_middleware(app, handler):
 
 # Сессии пользователей хранятся в Redis
 
-redis_pool = aioredis.Redis()  # Подключение к Redis
+redis_pool = Redis(host=REDIS_HOST, port=REDIS_PORT)  # Подключение к Redis
 
 
 # Промежуточное программное обеспечение
